@@ -3,45 +3,32 @@ package com.example.meal_mate
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import com.example.meal_mate.ui.theme.Meal_MateTheme
+import androidx.activity.viewModels
+import androidx.compose.runtime.*
+import com.example.meal_mate.screens.SplashScreen
+import com.example.meal_mate.ui.theme.MealMateTheme
+import com.example.meal_mate.viewmodel.ThemeViewModel
 
 class MainActivity : ComponentActivity() {
+
+    private val themeViewModel: ThemeViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         setContent {
-            Meal_MateTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
+
+            // ⭐ Splash logic added here
+            var showSplash by remember { mutableStateOf(true) }
+
+            MealMateTheme(darkTheme = themeViewModel.isDarkTheme.value) {
+                if (showSplash) {
+                    SplashScreen(
+                        onFinish = { showSplash = false }
                     )
+                } else {
+                    MainScreen(themeViewModel)
                 }
             }
         }
-    }
-}
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    Meal_MateTheme {
-        Greeting("Android")
     }
 }
