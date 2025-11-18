@@ -107,7 +107,10 @@ fun MainScreen(themeViewModel: ThemeViewModel) {
                             }
                         },
                         title = {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalAlignment = Alignment.Start
+                            ) {
                                 Text(
                                     text = currentLabel,
                                     style = MaterialTheme.typography.titleLarge
