@@ -19,7 +19,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.nativeCanvas
@@ -28,6 +27,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.withSave
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.meal_mate.ui.theme.DarkBackground
+import com.example.meal_mate.ui.theme.DarkCard
+import com.example.meal_mate.ui.theme.LightCard
 import com.example.meal_mate.viewmodel.ExpenseViewModel
 import com.example.meal_mate.viewmodel.FoodViewModel
 import com.example.meal_mate.viewmodel.MealViewModel
@@ -35,8 +37,7 @@ import kotlinx.coroutines.launch
 import kotlin.math.cos
 import kotlin.math.sin
 
-// ------------------ DATA CLASS ------------------
-
+// ---------------- DATA CLASS ----------------
 data class MealResult(
     val name: String,
     val calories: Int,
@@ -44,8 +45,7 @@ data class MealResult(
     val reason: String
 )
 
-// ------------------ MAIN WHEEL SCREEN ------------------
-
+// ---------------- MAIN SCREEN ----------------
 @Composable
 fun WheelScreen(
     expenseViewModel: ExpenseViewModel = viewModel(),
@@ -54,11 +54,7 @@ fun WheelScreen(
 ) {
 
     val context = LocalContext.current
-
-    // VIBRATOR
     val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-
-    // FIRESTORE MEALS
     val foodList = foodViewModel.foods.value
 
     if (foodList.isEmpty()) {
@@ -68,14 +64,11 @@ fun WheelScreen(
         return
     }
 
-    // FILTER STATES
     var selectedTime by remember { mutableStateOf("Breakfast") }
     var selectedMood by remember { mutableStateOf("Light Mood") }
     var budget by remember { mutableFloatStateOf(100f) }
-
     var mealResult by remember { mutableStateOf<MealResult?>(null) }
 
-    // ------------- FIRESTORE FILTERS -------------
     val filteredMeals = foodList.filter {
         it.category.equals(selectedTime, true) &&
                 it.mood.equals(selectedMood, true) &&
@@ -90,12 +83,10 @@ fun WheelScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text("No meals match your filters", color = Color.Red)
-            Text("Try changing mood or budget")
         }
         return
     }
 
-    // WHEEL ANIMATION
     val rotation = remember { Animatable(0f) }
     var isSpinning by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -107,41 +98,37 @@ fun WheelScreen(
         Text("Meal Decision Wheel", style = MaterialTheme.typography.headlineMedium)
         Spacer(modifier = Modifier.height(20.dp))
 
-        // -------- TIME SELECT --------
+        // TIME
         Text("Choose Time", style = MaterialTheme.typography.titleMedium)
         ChipRow(listOf("Breakfast", "Lunch", "Dinner"), selectedTime) { selectedTime = it }
         Spacer(modifier = Modifier.height(20.dp))
 
-        // -------- MOOD SELECT --------
+        // MOOD
         Text("Choose Mood", style = MaterialTheme.typography.titleMedium)
         ChipRow(listOf("Light Mood", "Healthy Mood", "Stress Mood"), selectedMood) { selectedMood = it }
         Spacer(modifier = Modifier.height(20.dp))
 
-        // -------- BUDGET SELECT --------
+        // BUDGET
         Text("Select Budget (₹${budget.toInt()})", style = MaterialTheme.typography.titleMedium)
         Slider(value = budget, onValueChange = { budget = it }, valueRange = 50f..500f)
         Spacer(modifier = Modifier.height(30.dp))
 
-        // ---------------- WHEEL + POINTER + CENTER BUTTON ----------------
+        // WHEEL + POINTER
         Box(
             modifier = Modifier.fillMaxWidth(),
             contentAlignment = Alignment.Center
         ) {
-
-            // ▼ POINTER ARROW
             Text(
                 text = "▼",
                 fontSize = 32.sp,
-                color = Color.Red,
+                color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .padding(bottom = 230.dp)
             )
 
-            // ROTATING WHEEL
             SpinWheel(angle = rotation.value, items = wheelItems)
 
-            // CENTER BUTTON / KNOB
             Box(
                 modifier = Modifier
                     .size(60.dp)
@@ -150,18 +137,18 @@ fun WheelScreen(
                     .align(Alignment.Center),
                 contentAlignment = Alignment.Center
             ) {
-                Text("●", fontSize = 38.sp, color = Color.Gray)
+                Text("●", fontSize = 38.sp, color = Color.DarkGray)
             }
         }
 
         Spacer(modifier = Modifier.height(30.dp))
 
-        // ---------------- SPIN BUTTON ----------------
+        // SPIN BUTTON
         Button(
             onClick = {
                 if (!isSpinning) {
                     isSpinning = true
-                    val randomSpin = (900..1800).random().toFloat() // 2.5–5 rotations
+                    val randomSpin = (900..1800).random().toFloat()
 
                     scope.launch {
                         rotation.animateTo(
@@ -171,30 +158,18 @@ fun WheelScreen(
 
                         isSpinning = false
 
-                        // VIBRATION ON STOP
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                            vibrator.vibrate(
-                                VibrationEffect.createOneShot(
-                                    150,
-                                    VibrationEffect.DEFAULT_AMPLITUDE
-                                )
-                            )
-                        } else {
-                            @Suppress("DEPRECATION")
-                            vibrator.vibrate(150)
-                        }
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+                            vibrator.vibrate(VibrationEffect.createOneShot(150, VibrationEffect.DEFAULT_AMPLITUDE))
+                        else @Suppress("DEPRECATION") vibrator.vibrate(150)
 
-                        val index = ((rotation.value % 360) /
-                                (360f / wheelItems.size)).toInt()
-
-                        val chosenMeal = wheelItems[index]
-                        val selectedFood = filteredMeals.first { it.name == chosenMeal }
+                        val index = ((rotation.value % 360) / (360f / wheelItems.size)).toInt()
+                        val selectedFood = filteredMeals.first { it.name == wheelItems[index] }
 
                         mealResult = MealResult(
-                            name = selectedFood.name,
-                            calories = selectedFood.calories,
-                            price = selectedFood.price,
-                            reason = selectedFood.reason
+                            selectedFood.name,
+                            selectedFood.calories,
+                            selectedFood.price,
+                            selectedFood.reason
                         )
                     }
                 }
@@ -207,12 +182,10 @@ fun WheelScreen(
 
         Spacer(modifier = Modifier.height(30.dp))
 
-        // ---------------- RESULT CARD ----------------
         mealResult?.let { meal ->
             ResultCard(meal)
             Spacer(modifier = Modifier.height(20.dp))
 
-            // SAVE MEAL + ADD EXPENSE
             Button(
                 onClick = {
                     mealViewModel.saveMeal(meal.name, meal.calories, meal.price)
@@ -226,10 +199,19 @@ fun WheelScreen(
     }
 }
 
-// ------------------ UPDATED SPINWHEEL() WITH GRADIENT + LABELS ------------------
+// ---------------- UPDATED BEIGE WHEEL COLORS ----------------
 
 @Composable
 fun SpinWheel(angle: Float, items: List<String>) {
+
+    val isDark = MaterialTheme.colorScheme.background == DarkBackground
+
+    val light1 = Color(0xFFE8DCC2)
+    val light2 = Color(0xFFC7B89D)
+
+    val dark1 = Color(0xFF3A3A3A)
+    val dark2 = Color(0xFF2C2C2C)
+
     Canvas(
         modifier = Modifier.size(260.dp).clip(CircleShape)
     ) {
@@ -239,24 +221,17 @@ fun SpinWheel(angle: Float, items: List<String>) {
         rotate(angle) {
             items.forEachIndexed { index, label ->
 
-                // GRADIENT BRUSH
-                val gradientBrush = Brush.linearGradient(
-                    colors = listOf(
-                        Color(0xFF42A5F5),
-                        Color(0xFF1E88E5),
-                        Color(0xFF0D47A1)
-                    )
-                )
-
-                // Draw gradient slice
                 drawArc(
-                    brush = gradientBrush,
+                    color = if (isDark)
+                        if (index % 2 == 0) dark1 else dark2
+                    else
+                        if (index % 2 == 0) light1 else light2,
                     startAngle = sliceAngle * index,
                     sweepAngle = sliceAngle,
                     useCenter = true
                 )
 
-                // ---- TEXT LABEL --------
+                // Label position
                 val midAngle = sliceAngle * index + sliceAngle / 2
                 val rad = Math.toRadians(midAngle.toDouble())
 
@@ -283,14 +258,13 @@ fun SpinWheel(angle: Float, items: List<String>) {
     }
 }
 
-// ------------------ CHIP ROW ------------------
-
+// ---------------- CHIP ROW ----------------
 @Composable
 fun ChipRow(options: List<String>, selectedOption: String, onSelect: (String) -> Unit) {
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
         options.forEach { option ->
             FilterChip(
-                selected = option == selectedOption, 
+                selected = option == selectedOption,
                 onClick = { onSelect(option) },
                 label = { Text(option) }
             )
@@ -298,22 +272,29 @@ fun ChipRow(options: List<String>, selectedOption: String, onSelect: (String) ->
     }
 }
 
-// ------------------ RESULT CARD ------------------
-
+// ---------------- RESULT CARD ----------------
 @Composable
 fun ResultCard(meal: MealResult) {
+
+    val isDark = MaterialTheme.colorScheme.background == DarkBackground
+
+    val cardColor = if (isDark) DarkCard else LightCard
+    val textColor = MaterialTheme.colorScheme.onSurface
+
     Card(
+        shape = RoundedCornerShape(18.dp),
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9))
+        colors = CardDefaults.cardColors(containerColor = cardColor)
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
-            Text("Your Meal:", style = MaterialTheme.typography.titleLarge)
+
+            Text("Your Meal:", style = MaterialTheme.typography.titleLarge, color = textColor)
             Spacer(modifier = Modifier.height(10.dp))
-            Text("Name: ${meal.name}")
-            Text("Calories: ${meal.calories} kcal")
-            Text("Price: ₹${meal.price}")
-            Text("Why: ${meal.reason}")
+
+            Text("Name: ${meal.name}", color = textColor)
+            Text("Calories: ${meal.calories} kcal", color = textColor)
+            Text("Price: ₹${meal.price}", color = textColor)
+            Text("Why: ${meal.reason}", color = textColor)
         }
     }
 }
